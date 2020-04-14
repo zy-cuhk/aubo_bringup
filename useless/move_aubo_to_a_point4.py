@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 # coding=utf-8
 import math
-from robotcontrol import *
+from aubo_robotcontrol import *
 import json
 def deg_to_rad(tuplelist):
     dd=[]

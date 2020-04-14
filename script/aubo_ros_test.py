@@ -33,8 +33,8 @@ def aubo_ros_test():
         movel_points="movel"+str(joint_radian1)+str(joint_radian2)
         movet_points="movet"+str(joint_radian1)+str(joint_radian2)+str(joint_radian3)+str(joint_radian4)
         pub1.publish(movej_points)
-        pub2.publish(movel_points)
-        pub3.publish(movet_points)
+        # pub2.publish(movel_points)
+        # pub3.publish(movet_points)
         rate.sleep()
 
 if __name__ == '__main__':

@@ -1,0 +1,20 @@
+<launch>
+
+  <!-- set /global_example parameter -->  
+  <group ns="aubo_startup">
+
+    <param name="aubo_ip" value='192.168.1.11'/>
+    <param name="aubo_start_point" value='(-3.3364,12.406,-81.09,-91.207,-86.08,0.164)'/> 
+    <param name="joint_maxacc_tuple" value='(2.5, 2.5, 2.5, 2.5, 2.5, 2.5)'/>
+    <param name="joint_maxvelc_tuple" value='(1.5, 1.5, 1.5, 1.5, 1.5, 1.5)'/>
+    <param name="ee_maxacc" value='1.5'/>
+    <param name="ee_maxvelc" value='1.5'/>
+    <param name="blend_radius" value='0.05'/>
+
+    <node pkg="aubo_bringup" type="aubo_control_ros_driver_v5.py" name="aubo_ros_driver2" output="screen" >
+    </node>
+    
+  </group>
+  
+</launch>
+

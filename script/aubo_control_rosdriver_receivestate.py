@@ -7,7 +7,7 @@ from aubo_robotcontrol import *
 from sensor_msgs.msg import JointState
 from geometry_msgs.msg import Pose
 from geometry_msgs.msg import TwistStamped
-from aubo_bringup.msg import catersian_vel
+from aubo_bringup.msg import catersian_vel,physical_para
 
 import numpy as np
 import time
@@ -18,29 +18,40 @@ class AuboRosDriver():
         Auboi5Robot.initialize()
         self.robot = Auboi5Robot()
         
-        # self.aubo_joint_pub = rospy.Publisher('aubo_joints', JointState, queue_size=10)
-        # self.aubo_pose_pub = rospy.Publisher('aubo_pose', Pose, queue_size=10)
-        # self.aubo_vel_pub = rospy.Publisher('aubo_vel', catersian_vel,queue_size=10)
-
-        # self.aubo_joint_movej_sub = rospy.Subscriber('/aubo_ros_script/movej', String, self.aubo_joint_movej, queue_size=1)
-        # self.aubo_joint_movel_sub = rospy.Subscriber('/aubo_ros_script/movel', String, self.aubo_joint_movel, queue_size=1)
-        self.aubo_joint_movet_sub = rospy.Subscriber('/aubo_ros_script/movet', String, self.aubo_joint_movet, queue_size=1)
+        self.aubo_joint_pub = rospy.Publisher('aubo_joints', JointState, queue_size=10)
+        self.aubo_pose_pub = rospy.Publisher('aubo_pose', Pose, queue_size=10)
+        self.aubo_vel_pub = rospy.Publisher('aubo_vel', catersian_vel,queue_size=10)
+        self.aubo_status_pub = rospy.Publisher('aubo_status',physical_para ,queue_size=10)
 
         self.move_to_point=[]
         self.move_line_points={}
         self.count=1
-        self.array1=np.array([0.0,0.0,0.0,0.0])
+        self.array1=np.array([0.0,0.0,0.0])
+        self.array2=np.array([0.0,0.0,0.0,0.0,0.0,0.0])
+        self.record_time=0.0
     def Init_node(self):
-        rospy.init_node("aubo_driver_node")
+        rospy.init_node("aubo_driver_node2")
     def obtain_aubo_info(self):
         current_pos = self.robot.get_current_waypoint()
-        
+        # obtain joint position
         current_joint_msg = JointState()
         current_joint_msg.header.frame_id = ""
         current_joint_msg.header.stamp = rospy.Time.now()
         current_joint_msg.position = current_pos['joint']
-        current_joint_msg.velocity = []
         current_joint_msg.effort = []
+        #obtiain joint velocity
+        time1=rospy.get_time()
+        print("time1",time1)
+        if self.count==1:
+            current_joint_msg.velocity=np.zeros(6)
+        else:
+            delta_t=time1-self.record_time
+            print("delta_time is:",delta_t)
+            print((current_joint_msg.position-self.array2)/delta_t)
+            current_joint_msg.velocity=(current_joint_msg.position-self.array2)/delta_t
+        self.array2=np.array(current_joint_msg.position)
+        print(np.array(current_joint_msg.position))
+        # obtain catersian position
         current_pose_msg = Pose()
         current_pose_msg.position.x = current_pos['pos'][0]
         current_pose_msg.position.y = current_pos['pos'][1]
@@ -49,23 +60,20 @@ class AuboRosDriver():
         current_pose_msg.orientation.y = current_pos['ori'][1]
         current_pose_msg.orientation.z = current_pos['ori'][2]
         current_pose_msg.orientation.w = current_pos['ori'][3]                
-
+        # obtian catersian velocity
         catersian_velocity=catersian_vel()
-        time1=rospy.get_time()
-        print("time1",time1)
         if self.count==1:
             catersian_velocity.vx=0.0
             catersian_velocity.vy=0.0
             catersian_velocity.vz=0.9
             catersian_velocity.v=0.0
         else:
-            delta_t=time1-self.array1[3]
+            delta_t=time1-self.record_time
             print("delta_time is:",delta_t)
             catersian_velocity.vx=(current_pose_msg.position.x-self.array1[0])/delta_t
             catersian_velocity.vy=(current_pose_msg.position.y-self.array1[1])/delta_t
             catersian_velocity.vz=(current_pose_msg.position.z-self.array1[2])/delta_t
             catersian_velocity.v=math.sqrt(catersian_velocity.vx**2+catersian_velocity.vy**2+catersian_velocity.vz**2)
-        
         self.count=self.count+1
         print("vx",catersian_velocity.vx)
         print("vy",catersian_velocity.vy)
@@ -75,60 +83,26 @@ class AuboRosDriver():
         self.array1[0]=current_pos['pos'][0]
         self.array1[1]=current_pos['pos'][1]
         self.array1[2]=current_pos['pos'][2]
-        self.array1[3]=time1
-        # print("catersian velocity is:",catersian_velocity)
+        self.record_time=time1
+
+        # obtain joint status
+        joint_status_msg=physical_para()
+        joint_status=self.robot.get_joint_status()
+
+        joint_status_msg.current=np.array([joint_status['joint1']['current'],joint_status['joint2']['current'],joint_status['joint3']['current'],\
+        joint_status['joint4']['current'],joint_status['joint5']['current'],joint_status['joint6']['current']])*0.001
+
+        joint_status_msg.voltage=np.array([joint_status['joint1']['voltage'],joint_status['joint2']['voltage'],joint_status['joint3']['voltage'],\
+        joint_status['joint4']['voltage'],joint_status['joint5']['voltage'],joint_status['joint6']['voltage']])
+
+        joint_status_msg.temperature=np.array([joint_status['joint1']['temperature'],joint_status['joint2']['temperature'],joint_status['joint3']['temperature'],\
+        joint_status['joint4']['temperature'],joint_status['joint5']['temperature'],joint_status['joint6']['temperature']])
 
         self.aubo_joint_pub.publish(current_joint_msg)
         self.aubo_pose_pub.publish(current_pose_msg)
         self.aubo_vel_pub.publish(catersian_velocity)
-        # rate.sleep()
+        self.aubo_status_pub.publish(joint_status_msg)
 
-    # def obtain_aubo_current(self,msg):
-    #     self.robot.get_joint_status()
-
-    def aubo_joint_movej(self,msg):
-        tuplefloatdata=self.Tuple_string_to_tuple(msg.data)
-        if "movej" in msg.data:
-            rospy.loginfo("movej start point={0}".format(tuplefloatdata[0:6]))
-            self.move_to_point=tuplefloatdata
-            flag=self.robot.move_joint(tuplefloatdata[0:6])
-            if flag:
-                rospy.loginfo("movej command work successfully")
-            else:
-                rospy.logerr("movej command doesn't work")
-        else:
-            rospy.logerr("Please send right movej message")
-    def aubo_joint_movel(self,msg):
-        tuplefloatdata=self.Tuple_string_to_tuple(msg.data)
-        if "movel" in msg.data:
-            rospy.loginfo("movel start point={0}".format(tuplefloatdata[0:6]))
-            rospy.loginfo("movel end point={0}".format(tuplefloatdata[6:]))
-            self.move_line_points={"startpoint":tuplefloatdata[0:6],"endpoint":tuplefloatdata[6:]}
-            self.robot.move_joint(tuplefloatdata[0:6])
-            flag=self.robot.move_line(tuplefloatdata[6:])
-            if flag:
-                rospy.loginfo("movel command work successfully")
-            else:
-                rospy.logerr("movel command doesn't work")
-        else:
-            rospy.logerr("Please send right movel message")
-    def aubo_joint_movet(self,msg):
-        tuplefloatdata=self.Tuple_string_to_tuple(msg.data)
-        if "movet" in msg.data:
-            waypoints_num=len(tuplefloatdata)/6
-            for i in range(waypoints_num):
-                rospy.loginfo("movet waypoints={0}".format(tuplefloatdata[6*i:6*(i+1)]))
-            self.robot.move_joint(tuplefloatdata[0:6])
-            self.robot.remove_all_waypoint()
-            for i in range(waypoints_num):
-                self.robot.add_waypoint(tuplefloatdata[6*i:6*(i+1)])
-            flag=self.robot.move_track(RobotMoveTrackType.CARTESIAN_MOVEP)
-            if flag:
-                rospy.loginfo("movet command work successfully")
-            else:
-                rospy.logerr("movet command doesn't work")
-        else:
-            rospy.logerr("Please send right movet message")
 
     def Tuple_string_to_tuple(self,tuplestring):
         tupletemp = re.findall(r'\-?\d+\.?\d*', tuplestring)
@@ -249,8 +223,8 @@ def main():
     StartPoint=Aub.Tuple_string_to_tuple(rospy.get_param('aubo_start_point'))
     joint_maxacctuple=Aub.Tuple_string_to_tuple(rospy.get_param('joint_maxacc_tuple'))
     joint_maxvelctuple=Aub.Tuple_string_to_tuple(rospy.get_param('joint_maxvelc_tuple'))
-    ee_maxacc=rospy.get_param('ee_maxacc')      #Aub.Tuple_string_to_tuple(rospy.get_param('ee_maxacc'))
-    ee_maxvelc=rospy.get_param('ee_maxvelc')     #Aub.Tuple_string_to_tuple(rospy.get_param('ee_maxvelc'))
+    ee_maxacc=rospy.get_param('ee_maxacc')     
+    ee_maxvelc=rospy.get_param('ee_maxvelc') 
     blend_radius=rospy.get_param('blend_radius')
 
     try:
@@ -259,10 +233,11 @@ def main():
         logger.error("Aubo robot disconnect,Please check!")
     try:
         while not rospy.is_shutdown():
-            print("aubo driver run -----")
-            # Aub.obtain_aubo_info()
+            print("aubo driver receives the data -----")
+            Aub.obtain_aubo_info()
             rate.sleep()
     except:
         rospy.logerr("ros node down")
 if __name__ == '__main__':
     main()
+
