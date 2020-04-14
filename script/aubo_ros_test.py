@@ -27,7 +27,7 @@ def aubo_ros_test():
     pub2 = rospy.Publisher('/aubo_ros_script/movel', String, queue_size=10)
     pub3 = rospy.Publisher('/aubo_ros_script/movet', String, queue_size=10)
     rospy.init_node('aubo_ros_test', anonymous=True)
-    rate = rospy.Rate(1) # 1hz
+    rate = rospy.Rate(20) # 1hz
     while not rospy.is_shutdown():
         movej_points="movej"+str(joint_radian1)
         movel_points="movel"+str(joint_radian1)+str(joint_radian2)

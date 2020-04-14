@@ -11,8 +11,9 @@
     <param name="ee_maxvelc" value='0.5'/>
     <param name="blend_radius" value='0.05'/>
 
-    <node pkg="aubo_bringup" type="aubo_control_ros_driver_v4.py" name="aubo_ros_driver" output="screen" >
+    <node pkg="aubo_bringup" type="aubo_control_ros_driver_v4.py" name="aubo_ros_driver1" output="screen" >
     </node>
+
     
   </group>
   

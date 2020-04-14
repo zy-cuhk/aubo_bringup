@@ -51,7 +51,7 @@ find_package(catkin REQUIRED COMPONENTS
  add_message_files(
    FILES
    catersian_vel.msg
-
+   physical_para.msg
 #   Message1.msg
 #   Message2.msg
  )
